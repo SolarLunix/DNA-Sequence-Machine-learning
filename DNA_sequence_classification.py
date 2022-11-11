@@ -17,6 +17,7 @@ dog_dna.head()
 #Let's define a function to collect all possible overlapping k-mers of a specified length from any sequence string.
 # function to convert sequence strings into k-mer words, default size = 6 (hexamer words)
 def Kmers_funct(seq, size=6):
+    print(seq)
     return [seq[x:x+size].lower() for x in range(len(seq) - size + 1)]
 
 #Now we can convert our training data sequences into short overlapping k-mers of legth 6. Lets do that for each species of data we have using our getKmers function.
