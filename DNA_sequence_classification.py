@@ -6,18 +6,21 @@ import matplotlib.pyplot as plt
 
 human_dna = pd.read_table('human_data.txt')
 human_dna.head()
+print(print(human_dna["class"].value_counts()))
 
 chimp_dna = pd.read_table('chimp_data.txt')
 chimp_dna.head()
+print(chimp_dna["class"].value_counts())
 
 dog_dna = pd.read_table('dog_data.txt')
 dog_dna.head()
+print(dog_dna["class"].value_counts())
 
 
 #Let's define a function to collect all possible overlapping k-mers of a specified length from any sequence string.
 # function to convert sequence strings into k-mer words, default size = 6 (hexamer words)
 def Kmers_funct(seq, size=6):
-    print(seq)
+    #print(seq)
     return [seq[x:x+size].lower() for x in range(len(seq) - size + 1)]
 
 #Now we can convert our training data sequences into short overlapping k-mers of legth 6. Lets do that for each species of data we have using our getKmers function.
@@ -91,9 +94,10 @@ print(X_train.shape)
 print(X_test.shape)
 
 #A multinomial naive Bayes classifier will be created. I previously did some parameter tuning and found the ngram size of 4 (reflected in the Countvectorizer() instance) and a model alpha of 0.1 did the best. Just to keep it simple I won't show that code here.
-
 ### Multinomial Naive Bayes Classifier ###
 # The alpha parameter was determined by grid search previously
+print("\n\n-------")
+print("Multinominal")
 from sklearn.naive_bayes import MultinomialNB
 classifier = MultinomialNB(alpha=0.1)
 classifier.fit(X_train, y_train)
@@ -107,7 +111,7 @@ Okay, so let's look at some model performce metrics like the confusion matrix, a
 
 """
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
-print("Confusion matrix\n")
+print("Confusion matrix: Human\n")
 print(pd.crosstab(pd.Series(y_test, name='Actual'), pd.Series(y_pred, name='Predicted')))
 def get_metrics(y_test, y_predicted):
     accuracy = accuracy_score(y_test, y_predicted)
@@ -128,13 +132,63 @@ y_pred_chimp = classifier.predict(X_chimp)
 y_pred_dog = classifier.predict(X_dog)
 
 # performance on chimp genes
-print("Confusion matrix\n")
+print("Confusion matrix: Chimp\n")
 print(pd.crosstab(pd.Series(y_chim, name='Actual'), pd.Series(y_pred_chimp, name='Predicted')))
 accuracy, precision, recall, f1 = get_metrics(y_chim, y_pred_chimp)
 print("accuracy = %.3f \nprecision = %.3f \nrecall = %.3f \nf1 = %.3f" % (accuracy, precision, recall, f1))
 
 # performance on dog genes
-print("Confusion matrix\n")
+print("Confusion matrix: Dog\n")
 print(pd.crosstab(pd.Series(y_dog, name='Actual'), pd.Series(y_pred_dog, name='Predicted')))
 accuracy, precision, recall, f1 = get_metrics(y_dog, y_pred_dog)
 print("accuracy = %.3f \nprecision = %.3f \nrecall = %.3f \nf1 = %.3f" % (accuracy, precision, recall, f1))
+
+# Now we'll try an SVM
+print("\n\n-------")
+print("SVM")
+from sklearn.svm import SVC
+classifier = SVC(kernel='sigmoid', C=10, coef0=0.75, tol=1e-2)
+classifier.fit(X_train, y_train)
+
+#Now let's make predictions on the human hold out test set and see how it performes on unseen data.
+
+y_pred = classifier.predict(X_test)
+
+"""
+Okay, so let's look at some model performce metrics like the confusion matrix, accuracy, precision, recall and f1 score. We are getting really good results on our unseen data, so it looks like our model did not overfit to the training data. In a real project I would go back and sample many more train test splits since we have a relatively small data set.
+
+"""
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+print("Confusion matrix: Human\n")
+print(pd.crosstab(pd.Series(y_test, name='Actual'), pd.Series(y_pred, name='Predicted')))
+def get_metrics(y_test, y_predicted):
+    accuracy = accuracy_score(y_test, y_predicted)
+    precision = precision_score(y_test, y_predicted, average='weighted')
+    recall = recall_score(y_test, y_predicted, average='weighted')
+    f1 = f1_score(y_test, y_predicted, average='weighted')
+    return accuracy, precision, recall, f1
+accuracy, precision, recall, f1 = get_metrics(y_test, y_pred)
+print("accuracy = %.3f \nprecision = %.3f \nrecall = %.3f \nf1 = %.3f" % (accuracy, precision, recall, f1))
+
+"""
+Now for the real test. Let's see how our model perfoms on the DNA sequences from other species. First we'll try the Chimpanzee, which we would expect to be very similar to human. Then we will try man's (and woman's) best friend, the Dog DNA sequences.
+"""
+#Make predictions for the Chimp and dog sequences¶
+
+# Predicting the chimp, dog and worm sequences
+y_pred_chimp = classifier.predict(X_chimp)
+y_pred_dog = classifier.predict(X_dog)
+
+# performance on chimp genes
+print("Confusion matrix: Chimp\n")
+print(pd.crosstab(pd.Series(y_chim, name='Actual'), pd.Series(y_pred_chimp, name='Predicted')))
+accuracy, precision, recall, f1 = get_metrics(y_chim, y_pred_chimp)
+print("accuracy = %.3f \nprecision = %.3f \nrecall = %.3f \nf1 = %.3f" % (accuracy, precision, recall, f1))
+
+# performance on dog genes
+print("Confusion matrix: Dog\n")
+print(pd.crosstab(pd.Series(y_dog, name='Actual'), pd.Series(y_pred_dog, name='Predicted')))
+accuracy, precision, recall, f1 = get_metrics(y_dog, y_pred_dog)
+print("accuracy = %.3f \nprecision = %.3f \nrecall = %.3f \nf1 = %.3f" % (accuracy, precision, recall, f1))
+
+
