@@ -47,17 +47,17 @@ classifiers = []
 for i, (h, c, d) in enumerate(zip(human, chimp, dog)):
     print("\n------- ------- ------- ------- ------- ------- -------\n")
 
-    h = [Kmers_funct(x) for x in h]
-    c = [Kmers_funct(x) for x in c]
-    d = [Kmers_funct(x) for x in d]
+    h = [Kmers_funct(x, 9) for x in h]
+    c = [Kmers_funct(x, 9) for x in c]
+    d = [Kmers_funct(x, 9) for x in d]
     print(f"Class: {i} \n")
     print(f"\tHuman \t{len(h)} \t{int(len(h)-(len(h)*TEST_SIZE))} \t{int(len(h)*TEST_SIZE)}")
     print(f"\tChimp \t{len(c)} \t{int(len(c)-(len(c)*TEST_SIZE))} \t{int(len(c)*TEST_SIZE)}")
     print(f"\tDog \t{len(d)} \t{int(len(d)-(len(d)*TEST_SIZE))} \t{int(len(d)*TEST_SIZE)}")
 
-    h_labels = [0 for x in h]
-    c_labels = [1 for x in c]
-    d_labels = [2 for x in d]
+    h_labels = [0 for _ in h]
+    c_labels = [1 for _ in c]
+    d_labels = [2 for _ in d]
 
     x_train = []
     x_test = []
@@ -68,12 +68,12 @@ for i, (h, c, d) in enumerate(zip(human, chimp, dog)):
     x_train, x_test, y_train, y_test = split_combine_data(c, c_labels, x_train, x_test, y_train, y_test)
     x_train, x_test, y_train, y_test = split_combine_data(d, d_labels, x_train, x_test, y_train, y_test)
 
-    cv = CountVectorizer(ngram_range=(6,6))
+    cv = CountVectorizer(ngram_range=(3,3))
     x_train = cv.fit_transform(x_train)
     x_test = cv.transform(x_test)
 
     print(f"\t---------------------------- \n\tTraining {x_train.shape} \n\tTesting {x_test.shape}")
-    classifier = LinearSVC(loss='squared_hinge', C=0.5, max_iter=1000000)
+    classifier = LinearSVC(loss='squared_hinge', C=0.5, max_iter=100000)
     classifier.fit(x_train, y_train)
 
     y_pred = classifier.predict(x_test)
