@@ -1,4 +1,5 @@
 # - - - - - - - IMPORTS - - - - - - - 
+import itertools
 import numpy as np
 import pandas as pd
 
@@ -38,8 +39,37 @@ def print_data_information(x, y):
     for i, n in enumerate(unique[1]):
         print(f"\tClass {i}: \t{n}")
 
+def create_list(str_len=20):
+    lst = ["".join(x) for x in itertools.product('actg', repeat=str_len)]
+    return np.array(lst)
+
+def kmer_count_vector(seq_full, c_vals):
+    size = len(c_vals[0])
+    counts = np.zeros(c_vals.shape[0])
+    for x in range(len(seq_full) - size + 1):
+        seq = np.array(list(seq_full[x:x+size].lower()))
+        unknown_indices = np.where(seq == 'n')[0]
+        unknown_val = len(unknown_indices)
+        val = 1 / (1 + len(unknown_indices))
+        
+        if unknown_val > 0:
+            permutations = create_list(unknown_val)
+            for per in permutations:
+                seq[unknown_indices] = per
+                idx = np.where(c_vals == ''.join(seq))[0]
+                counts[idx] += val
+        else:
+            idx = np.where(c_vals == ''.join(seq))[0]
+            counts[idx] += val
+    
+    return counts
+
 def Kmers_funct(seq, size=6):
-    data = [seq[x:x+size].lower() for x in range(len(seq) - size + 1)]
+    data = []
+    for x in range(len(seq) - size + 1):
+        item = seq[x:x+size].lower()
+        item = item.replace('u', 't')
+        data.append(item)
     return ' '.join(data)
 
 def get_metrics(y_test, y_predicted):
@@ -49,8 +79,9 @@ def get_metrics(y_test, y_predicted):
     f1 = f1_score(y_test, y_predicted, average='weighted', zero_division=True)
     return accuracy, precision, recall, f1
 
-def pipeline(x_train, x_test, y_train, y_test, ng=(3,3), k=9):
+def pipeline(x_trainp, x_testp, y_train, y_test, ng=(3,3), k=9):
     # Create Kmers
+    '''
     cv = CountVectorizer(ngram_range=ng)
 
     x_train = [Kmers_funct(x, k) for x in x_train]
@@ -58,6 +89,14 @@ def pipeline(x_train, x_test, y_train, y_test, ng=(3,3), k=9):
 
     x_test = [Kmers_funct(x, k) for x in x_test]
     x_test = cv.transform(x_test)
+    '''
+
+    cv_vals = create_list(k)
+    x_train = [kmer_count_vector(x, cv_vals) for x in x_trainp]
+    x_test = [kmer_count_vector(x, cv_vals) for x in x_testp]
+
+    x_train = np.array(x_train)
+    x_test = np.array(x_test)
 
     print(f"------------------------------- \n\tTraining {x_train.shape} \n\tTesting {x_test.shape}")
     classifier = LinearSVC(loss='squared_hinge', C=0.5, max_iter=100000)
@@ -95,7 +134,7 @@ def species(X, Y):
 
     pipeline(x_train, x_test, y_train, y_test)
 
-def gene(X, Y):
+def gene(X, Y, k=6):
     print("\nDetecting Gene from any sample")
     x = np.array(X)
     y = np.array(Y)[:, 0]
@@ -113,9 +152,9 @@ def gene(X, Y):
     print("Testing: ", end="")
     print_data_information(x_test, y_test)
 
-    pipeline(x_train, x_test, y_train, y_test)
+    pipeline(x_train, x_test, y_train, y_test, k=k)
 
-def gene_species(X, Y):
+def gene_species(X, Y, k=6):
     print("\nDetecting Species and Gene from sample")
     x = np.array(X)
     y = [(s*7 + g) for (g, s) in Y]
@@ -134,9 +173,9 @@ def gene_species(X, Y):
     print("Testing: ", end="")
     print_data_information(x_test, y_test)
 
-    pipeline(x_train, x_test, y_train, y_test)
+    pipeline(x_train, x_test, y_train, y_test, k=k)
 
-def gene_species2(X, Y):
+def gene_species2(X, Y, k=6):
     print("\nDetecting Species from Gene sample")
     Y = np.array(Y)
     for c in np.unique(Y[:, 0]):
@@ -158,17 +197,7 @@ def gene_species2(X, Y):
         print("Testing: ", end="")
         print_data_information(x_test, y_test)
 
-        pipeline(x_train, x_test, y_train, y_test)
-
-def kmer_len(x_train, ng=(3,3), k=9):
-    # Create Kmers
-    cv = CountVectorizer(ngram_range=ng)
-
-    x_train = [Kmers_funct(x, k) for x in x_train]
-    uni = np.unique(np.array(x).flatten()).shape
-    x_train = cv.fit_transform(x_train)
-
-    print(f"{k=} \t {ng=} \t {uni=} \t Shape: {x_train.shape}")
+        pipeline(x_train, x_test, y_train, y_test, k=k)
 
 # - - - - - - - MAIN - - - - - - - 
 def main():
@@ -177,25 +206,15 @@ def main():
     X, Y = read_data('/mnt/ssd/Repos/DNA-Sequence-Machine-learning/dog_data.txt', 2, X, Y)
 
     print(np.array(X).shape, np.array(Y).shape)
+    
+    #gene(X, Y, 3)
+    #gene(X, Y, 6)
+    gene(X, Y, 9)
+    gene(X, Y, 12)
 
     #gene_species2(X, Y)
     #gene_species(X, Y)
     #species(X, Y)
-    #gene(X, Y)
-
-    kmer_len(X, (1,1), 3)
-    kmer_len(X, (3,3), 3)
-    kmer_len(X, (6,6), 3)
-    kmer_len(X, (9,9), 3)
-    kmer_len(X, (1,1), 6)
-    kmer_len(X, (3,3), 6)
-    kmer_len(X, (6,6), 6)
-    kmer_len(X, (9,9), 6)
-    kmer_len(X, (1,1), 9)
-    kmer_len(X, (3,3), 9)
-    kmer_len(X, (6,6), 9)
-    kmer_len(X, (9,9), 9)
-
 
 
 # - - - - - - - RUN - - - - - - - 
